@@ -1,0 +1,246 @@
+{% extends 'rentals/base.html' %}
+
+{% block title %}Launch Compute Session - TakeMyCompute{% endblock %}
+{% block active_browse %}active{% endblock %}
+
+{% block style %}
+    h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+        color: var(--text-muted);
+        margin-bottom: 2.5rem;
+    }
+
+    .form-layout {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 2rem;
+        align-items: start;
+    }
+
+    /* Form Styles */
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        margin-bottom: 1.75rem;
+    }
+
+    .form-group label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+    }
+
+    .form-input {
+        background: rgba(13, 15, 20, 0.8);
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        padding: 0.8rem 1rem;
+        color: var(--text-main);
+        font-family: 'Inter', sans-serif;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(31, 133, 222, 0.15);
+    }
+
+    .help-text {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    /* Sliders */
+    .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .slider-input {
+        flex-grow: 1;
+        accent-color: var(--primary);
+        height: 6px;
+        border-radius: 5px;
+        outline: none;
+    }
+
+    .slider-val {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        color: var(--text-accent);
+        min-width: 70px;
+        text-align: right;
+    }
+
+    /* Info Sidebar */
+    .sidebar-widget {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--card-border);
+        border-radius: 14px;
+        padding: 1.5rem;
+    }
+
+    .widget-title {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 1.25rem;
+        border-bottom: 1px solid var(--card-border);
+        padding-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .spec-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .spec-row span:first-child {
+        color: var(--text-muted);
+    }
+
+    .spec-row span:last-child {
+        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .alert {
+        background: rgba(230, 57, 70, 0.1);
+        border: 1px solid rgba(230, 57, 70, 0.2);
+        color: #f87171;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+    }
+{% endblock %}
+
+{% block content %}
+    <div>
+        <h1>Configure Sandbox Environment</h1>
+        <div class="subtitle">Deploy your containerized workloads directly onto host machine</div>
+    </div>
+
+    {% if error %}
+        <div class="alert">
+            <strong>Error:</strong> {{ error }}
+        </div>
+    {% endif %}
+
+    <div class="form-layout">
+        <!-- Main Form -->
+        <form method="POST" class="glass-card">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="docker_image">Docker Image</label>
+                <input type="text" name="docker_image" id="docker_image" class="form-input" 
+                       placeholder="e.g. alpine:latest, python:3.9-slim" required 
+                       value="{{ form_data.docker_image|default:'' }}">
+                <span class="help-text">Any publicly reachable docker image from DockerHub.</span>
+            </div>
+
+            <div class="form-group">
+                <label for="command">Container Command (Optional)</label>
+                <input type="text" name="command" id="command" class="form-input" 
+                       placeholder="e.g. sh -c 'sleep 30 && echo done'"
+                       value="{{ form_data.command|default:'' }}">
+                <span class="help-text">Leave blank to execute the image's default ENTRYPOINT/CMD.</span>
+            </div>
+
+            <div class="form-group">
+                <label for="cpu_limit">Allocated CPU Cores</label>
+                <div class="slider-container">
+                    <input type="range" name="cpu_limit" id="cpu_limit" class="slider-input" 
+                           min="0.1" max="{{ max_cpus }}" step="0.1" 
+                           value="{{ form_data.cpu_limit|default:1.0 }}">
+                    <span class="slider-val" id="cpu_val">1.0 Cores</span>
+                </div>
+                <span class="help-text">Capped at the provider machine's physical limits ({{ max_cpus }} Cores).</span>
+            </div>
+
+            <div class="form-group">
+                <label for="memory_limit_mb">Allocated System RAM (MB)</label>
+                <div class="slider-container">
+                    <input type="range" name="memory_limit_mb" id="memory_limit_mb" class="slider-input" 
+                           min="64" max="{{ max_ram_mb }}" step="64" 
+                           value="{{ form_data.memory_limit_mb|default:512 }}">
+                    <span class="slider-val" id="ram_val">512 MB</span>
+                </div>
+                <span class="help-text">Capped at the provider machine's available RAM ({{ max_ram_mb }} MB).</span>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Provision & Launch</button>
+                <a href="{% url 'renter_browse' %}" class="btn btn-outline">Cancel</a>
+            </div>
+        </form>
+
+        <!-- Sidebar Host Info -->
+        <div class="sidebar-widget">
+            <div class="widget-title">
+                Host Specifications
+            </div>
+            <div class="spec-row">
+                <span>Machine Node</span>
+                <span>{{ machine.provider_id }}</span>
+            </div>
+            <div class="spec-row">
+                <span>OS/Kernel</span>
+                <span>{{ machine.os_name }}</span>
+            </div>
+            <div class="spec-row">
+                <span>Total CPU Cores</span>
+                <span>{{ machine.cpu_count|default:1 }} Cores</span>
+            </div>
+            <div class="spec-row">
+                <span>Host Memory Limit</span>
+                <span>{{ machine.memory_total_gb }} GB</span>
+            </div>
+            <div class="spec-row">
+                <span>Host Disk Capacity</span>
+                <span>{{ machine.disk_total_gb }} GB</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sliders Javascript Hook -->
+    <script>
+        const cpuSlider = document.getElementById('cpu_limit');
+        const cpuVal = document.getElementById('cpu_val');
+        const ramSlider = document.getElementById('memory_limit_mb');
+        const ramVal = document.getElementById('ram_val');
+
+        function updateSliders() {
+            cpuVal.textContent = parseFloat(cpuSlider.value).toFixed(1) + ' Cores';
+            ramVal.textContent = ramSlider.value + ' MB';
+        }
+
+        cpuSlider.addEventListener('input', updateSliders);
+        ramSlider.addEventListener('input', updateSliders);
+        
+        // Run once initially
+        updateSliders();
+    </script>
+{% endblock %}

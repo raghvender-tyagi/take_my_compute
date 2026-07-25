@@ -13,6 +13,7 @@ class ProviderMachine(models.Model):
     name = models.CharField(max_length=100, blank=True)
     
     # System specifications and real-time usage (updated by heartbeats)
+    cpu_count = models.IntegerField(default=1)
     cpu_usage_percent = models.FloatField(default=0.0)
     
     memory_total_gb = models.FloatField(default=0.0)

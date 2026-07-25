@@ -1,0 +1,392 @@
+{% extends 'rentals/base.html' %}
+
+{% block title %}Monitor Compute Session #{{ session.id }} - TakeMyCompute{% endblock %}
+
+{% block style %}
+    .header-area {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    h1 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+    }
+
+    /* Grid layout */
+    .dashboard-layout {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 2rem;
+        align-items: start;
+    }
+
+    /* Status Glow Colors */
+    .status-panel {
+        text-align: center;
+        padding: 2.5rem 1.5rem;
+    }
+
+    .glow-badge {
+        font-size: 1.5rem;
+        font-weight: 800;
+        padding: 0.75rem 2rem;
+        border-radius: 12px;
+        display: inline-block;
+        margin: 1rem 0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+    }
+
+    /* Status classes mapping */
+    .status-pending {
+        background: rgba(234, 179, 8, 0.1);
+        color: #facc15;
+        border: 1px solid rgba(234, 179, 8, 0.3);
+        box-shadow: 0 0 20px rgba(234, 179, 8, 0.15);
+    }
+    .status-provisioning {
+        background: rgba(56, 189, 248, 0.1);
+        color: #38bdf8;
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+    }
+    .status-running {
+        background: rgba(74, 222, 128, 0.15);
+        color: #4ade80;
+        border: 1px solid rgba(74, 222, 128, 0.3);
+        box-shadow: 0 0 25px rgba(74, 222, 128, 0.3);
+    }
+    .status-stopping {
+        background: rgba(249, 115, 22, 0.1);
+        color: #fb923c;
+        border: 1px solid rgba(249, 115, 22, 0.3);
+    }
+    .status-stopped {
+        background: rgba(156, 163, 175, 0.1);
+        color: #9ca3af;
+        border: 1px solid rgba(156, 163, 175, 0.3);
+    }
+    .status-completed {
+        background: rgba(34, 197, 94, 0.1);
+        color: #22c55e;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .status-failed {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.15);
+    }
+
+    /* Terminal Console */
+    .console-container {
+        display: flex;
+        flex-direction: column;
+        height: 500px;
+        background: #06080c;
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: inset 0 2px 10px rgba(0,0,0,0.9);
+    }
+
+    .console-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #11141b;
+        padding: 0.75rem 1.25rem;
+        border-bottom: 1px solid var(--card-border);
+    }
+
+    .console-title {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .terminal-dots {
+        display: flex;
+        gap: 0.4rem;
+    }
+
+    .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+
+    .dot-red { background-color: #ef4444; }
+    .dot-yellow { background-color: #eab308; }
+    .dot-green { background-color: #22c55e; }
+
+    .console-body {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 1.25rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        color: #22c55e;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        scroll-behavior: smooth;
+    }
+
+    .console-line {
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+
+    .console-system-line {
+        color: var(--text-accent);
+        font-style: italic;
+    }
+
+    .console-error-line {
+        color: #f87171;
+    }
+
+    /* Details Panel */
+    .detail-card {
+        padding: 1.5rem;
+    }
+
+    .spec-table {
+        width: 100%;
+        margin-top: 1rem;
+        border-collapse: collapse;
+    }
+
+    .spec-table td {
+        padding: 0.8rem 0;
+        font-size: 0.9rem;
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+
+    .spec-table td:first-child {
+        color: var(--text-muted);
+    }
+
+    .spec-table td:last-child {
+        font-weight: 600;
+        text-align: right;
+    }
+{% endblock %}
+
+{% block content %}
+    <div class="header-area">
+        <div>
+            <h1>Session Monitor #{{ session.id }}</h1>
+            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.2rem;">Hosted on Provider: {{ session.provider_machine.provider_id }}</div>
+        </div>
+        <a href="{% url 'renter_sessions_list' %}" class="btn btn-outline">Back to Sessions</a>
+    </div>
+
+    <div class="dashboard-layout">
+        <!-- Left Side Controls -->
+        <div>
+            <!-- Status & Kill Button -->
+            <div class="glass-card status-panel">
+                <p style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Current State</p>
+                <div id="status_badge" class="glow-badge status-{{ session.status }}">
+                    {{ session.status }}
+                </div>
+                
+                <div style="margin-top: 1.5rem;">
+                    <button id="stop_btn" class="btn btn-danger" style="width: 100%;" 
+                            {% if session.status in 'stopped,completed,failed' %}disabled style="opacity:0.4; cursor:not-allowed;"{% endif %}>
+                        Force Terminate Session
+                    </button>
+                </div>
+            </div>
+
+            <!-- Configuration Details -->
+            <div class="glass-card detail-card">
+                <h3 style="font-size: 1.1rem; border-bottom: 1px solid var(--card-border); padding-bottom: 0.5rem;">Allocated Limits</h3>
+                <table class="spec-table">
+                    <tr>
+                        <td>Docker Image</td>
+                        <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; word-break: break-all;">{{ session.docker_image }}</td>
+                    </tr>
+                    <tr>
+                        <td>Command</td>
+                        <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; word-break: break-all;">{{ session.command|default:"(default entrypoint)" }}</td>
+                    </tr>
+                    <tr>
+                        <td>CPU Cores</td>
+                        <td>{{ session.cpu_limit }} Cores</td>
+                    </tr>
+                    <tr>
+                        <td>RAM Max</td>
+                        <td>{{ session.memory_limit_mb }} MB</td>
+                    </tr>
+                    <tr>
+                        <td>Container ID</td>
+                        <td id="container_id_lbl" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text-muted);">{{ session.container_id|default:"-"|slice:":12" }}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Error message widget if present -->
+            <div id="error_widget" class="glass-card detail-card" style="border-color: rgba(239, 68, 68, 0.2); {% if not session.error_reason %}display: none;{% endif %}">
+                <h3 style="font-size: 1.1rem; color: #f87171; margin-bottom: 0.5rem;">Failure Details</h3>
+                <p id="error_reason_lbl" style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #ef4444; word-break: break-word;">{{ session.error_reason }}</p>
+            </div>
+        </div>
+
+        <!-- Right Side Terminal -->
+        <div>
+            <div class="console-container">
+                <div class="console-header">
+                    <div class="console-title">
+                        <span style="color: #4ade80;">$</span> stdout/stderr stream
+                    </div>
+                    <div class="terminal-dots">
+                        <span class="dot dot-red"></span>
+                        <span class="dot dot-yellow"></span>
+                        <span class="dot dot-green"></span>
+                    </div>
+                </div>
+                <div class="console-body" id="console_log">
+                    <div class="console-line console-system-line">[System]: Establishing WebSocket connection to server...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live WebSocket Javascript Code -->
+    <script>
+        const sessionId = "{{ session.id }}";
+        const consoleLog = document.getElementById('console_log');
+        const statusBadge = document.getElementById('status_badge');
+        const stopBtn = document.getElementById('stop_btn');
+        const containerIdLbl = document.getElementById('container_id_lbl');
+        const errorWidget = document.getElementById('error_widget');
+        const errorReasonLbl = document.getElementById('error_reason_lbl');
+
+        function appendLog(text, isSystem = false, isError = false) {
+            const line = document.createElement('div');
+            line.classList.add('console-line');
+            if (isSystem) line.classList.add('console-system-line');
+            if (isError) line.classList.add('console-error-line');
+            line.textContent = text;
+            consoleLog.appendChild(line);
+            // Scroll to bottom
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        // 1. Establish WebSocket Connection
+        const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+        const wsUrl = `${wsScheme}://${window.location.host}/ws/rentals/${sessionId}/`;
+        
+        const socket = new WebSocket(wsUrl);
+
+        socket.onopen = function(e) {
+            appendLog('[System]: WebSocket connection established successfully.', true);
+        };
+
+        socket.onmessage = function(e) {
+            const data = jsonParseSafely(e.data);
+            if (!data) return;
+
+            if (data.type === "log") {
+                appendLog(data.log_line);
+            } else if (data.type === "status") {
+                const status = data.status;
+                updateStatusBadge(status);
+                appendLog(`[System]: State changed to '${status}'`, true);
+                
+                if (data.container_id) {
+                    containerIdLbl.textContent = data.container_id.substring(0, 12);
+                }
+
+                if (data.error_reason) {
+                    errorWidget.style.display = 'block';
+                    errorReasonLbl.textContent = data.error_reason;
+                    appendLog(`[Error]: ${data.error_reason}`, false, true);
+                } else {
+                    errorWidget.style.display = 'none';
+                }
+
+                // If ended, disable stop button
+                if (["stopped", "completed", "failed"].includes(status)) {
+                    stopBtn.disabled = true;
+                    stopBtn.style.opacity = '0.4';
+                    stopBtn.style.cursor = 'not-allowed';
+                }
+            }
+        };
+
+        socket.onclose = function(e) {
+            appendLog('[System]: Connection closed. Try refreshing the page.', true, true);
+        };
+
+        socket.onerror = function(e) {
+            appendLog('[System]: WebSocket error occurred.', true, true);
+        };
+
+        function jsonParseSafely(text) {
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function updateStatusBadge(status) {
+            // Remove previous classes
+            statusBadge.className = 'glow-badge';
+            statusBadge.classList.add(`status-${status}`);
+            statusBadge.textContent = status;
+        }
+
+        // 2. Handle Stop Button Click
+        stopBtn.addEventListener('click', function() {
+            if (!confirm("Are you sure you want to force terminate this session? This will destroy the sandbox container.")) {
+                return;
+            }
+
+            appendLog('[System]: Requesting session termination...', true);
+            
+            // Get CSRF Token
+            const cookies = document.cookie.split(';');
+            let csrfToken = '';
+            for (let i = 0; i < cookies.length; i++) {
+                const c = cookies[i].trim();
+                if (c.startsWith('csrftoken=')) {
+                    csrfToken = c.substring('csrftoken='.length);
+                    break;
+                }
+            }
+
+            fetch(`/api/rentals/${sessionId}/stop/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "success") {
+                    appendLog('[System]: Stop request accepted by backend.', true);
+                } else {
+                    appendLog(`[System Error]: ${data.detail || "Failed to submit stop request."}`, true, true);
+                }
+            })
+            .catch(err => {
+                appendLog(`[System Error]: ${err.message}`, true, true);
+            });
+        });
+    </script>
+{% endblock %}

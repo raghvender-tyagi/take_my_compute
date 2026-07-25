@@ -1,0 +1,259 @@
+{% extends 'rentals/base.html' %}
+
+{% block title %}Browse Compute Machines - TakeMyCompute{% endblock %}
+{% block active_browse %}active{% endblock %}
+
+{% block style %}
+    .header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+    }
+
+    /* Filter Panel */
+    .filter-panel {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid var(--card-border);
+        margin-bottom: 2rem;
+        align-items: flex-end;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        flex-grow: 1;
+        min-width: 150px;
+    }
+
+    .filter-group label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+
+    .filter-input {
+        background: rgba(13, 15, 20, 0.8);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 0.6rem 0.8rem;
+        color: var(--text-main);
+        font-family: 'Inter', sans-serif;
+        font-size: 0.9rem;
+        transition: border-color 0.2s ease;
+    }
+
+    .filter-input:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+
+    /* Grid layout */
+    .machines-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .machine-card {
+        transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .machine-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(31, 133, 222, 0.3);
+    }
+
+    .machine-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 1.25rem;
+    }
+
+    .machine-title {
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: var(--text-main);
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.6rem;
+        border-radius: 50px;
+        text-transform: uppercase;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .status-online {
+        background: rgba(43, 147, 72, 0.15);
+        color: #4ade80;
+        border: 1px solid rgba(43, 147, 72, 0.3);
+    }
+
+    .status-offline {
+        background: rgba(230, 57, 70, 0.15);
+        color: #f87171;
+        border: 1px solid rgba(230, 57, 70, 0.3);
+    }
+
+    .badge-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: currentColor;
+    }
+
+    .specs-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+        background: rgba(0, 0, 0, 0.15);
+        padding: 1rem;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.03);
+    }
+
+    .spec-item {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.9rem;
+    }
+
+    .spec-label {
+        color: var(--text-muted);
+    }
+
+    .spec-value {
+        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .price-tag {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--text-accent);
+    }
+
+    .price-unit {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-weight: 400;
+    }
+{% endblock %}
+
+{% block content %}
+    <div class="header-row">
+        <h1>Available Compute Pools</h1>
+        <div class="user-badge" style="background: rgba(56, 189, 248, 0.1); border-color: rgba(56, 189, 248, 0.2);">
+            Active Machines: {{ machines|length }}
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <form method="GET" class="filter-panel">
+        <div class="filter-group">
+            <label for="min_cpu">Min CPU Cores</label>
+            <input type="number" name="min_cpu" id="min_cpu" class="filter-input" value="{{ min_cpu|default:'' }}" placeholder="e.g. 2">
+        </div>
+        <div class="filter-group">
+            <label for="min_ram">Min RAM (GB)</label>
+            <input type="number" step="0.1" name="min_ram" id="min_ram" class="filter-input" value="{{ min_ram|default:'' }}" placeholder="e.g. 4">
+        </div>
+        <div class="filter-group">
+            <label for="min_disk">Min Disk (GB)</label>
+            <input type="number" step="0.1" name="min_disk" id="min_disk" class="filter-input" value="{{ min_disk|default:'' }}" placeholder="e.g. 20">
+        </div>
+        <div class="filter-group" style="flex-grow: 0; min-width: 120px;">
+            <label for="status">Status</label>
+            <select name="status" id="status" class="filter-input">
+                <option value="online" {% if status_filter == 'online' %}selected{% endif %}>Online</option>
+                <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="padding: 0.65rem 1.5rem;">Apply Filters</button>
+        <a href="{% url 'renter_browse' %}" class="btn btn-outline" style="padding: 0.65rem 1.5rem;">Reset</a>
+    </form>
+
+    <!-- Grid -->
+    <div class="machines-grid">
+        {% for machine in machines %}
+            <div class="glass-card machine-card">
+                <div class="machine-header">
+                    <div>
+                        <div class="machine-title">{{ machine.provider_id }}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">OS: {{ machine.os_name }} {{ machine.os_version }}</div>
+                    </div>
+                    {% if machine.is_online %}
+                        <span class="status-badge status-online">
+                            <span class="badge-dot pulse-light"></span> Online
+                        </span>
+                    {% else %}
+                        <span class="status-badge status-offline">
+                            <span class="badge-dot"></span> Offline
+                        </span>
+                    {% endif %}
+                </div>
+
+                <div class="specs-list">
+                    <div class="spec-item">
+                        <span class="spec-label">CPU Count</span>
+                        <span class="spec-value">{{ machine.cpu_count|default:1 }} Cores</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">CPU Usage</span>
+                        <span class="spec-value">{{ machine.cpu_usage_percent }}%</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">RAM Available</span>
+                        <span class="spec-value">{{ machine.memory_used_gb }} / {{ machine.memory_total_gb }} GB</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Disk Storage</span>
+                        <span class="spec-value">{{ machine.disk_total_gb }} GB</span>
+                    </div>
+                </div>
+
+                <div class="card-footer">
+                    <div>
+                        <span class="price-tag">Free <span class="price-unit">/ compute task</span></span>
+                    </div>
+                    {% if machine.is_online %}
+                        <a href="{% url 'renter_launch' machine.id %}" class="btn btn-primary">Rent Compute</a>
+                    {% else %}
+                        <button class="btn btn-outline" style="opacity: 0.4; cursor: not-allowed;" disabled>Offline</button>
+                    {% endif %}
+                </div>
+            </div>
+        {% empty %}
+            <div class="glass-card" style="grid-column: 1 / -1; text-align: center; padding: 4rem 2rem;">
+                <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 1.5rem;">No machines found matching the specified parameters.</p>
+                <a href="{% url 'renter_browse' %}" class="btn btn-outline">Reset Filter Settings</a>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}

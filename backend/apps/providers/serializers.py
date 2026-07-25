@@ -3,6 +3,7 @@ from .models import ProviderMachine, ProviderHeartbeatLog
 
 class ProviderHeartbeatSerializer(serializers.Serializer):
     provider_id = serializers.CharField(max_length=100)
+    cpu_count = serializers.IntegerField(default=1)
     cpu_usage_percent = serializers.FloatField()
     memory_total_gb = serializers.FloatField()
     memory_used_gb = serializers.FloatField()
@@ -20,7 +21,7 @@ class ProviderMachineSerializer(serializers.ModelSerializer):
         model = ProviderMachine
         fields = [
             'id', 'owner', 'owner_username', 'provider_id', 'name',
-            'cpu_usage_percent', 'memory_total_gb', 'memory_used_gb',
+            'cpu_count', 'cpu_usage_percent', 'memory_total_gb', 'memory_used_gb',
             'memory_usage_percent', 'disk_total_gb', 'disk_used_gb',
             'disk_usage_percent', 'os_name', 'os_version', 'is_online',
             'last_heartbeat', 'created_at', 'updated_at'

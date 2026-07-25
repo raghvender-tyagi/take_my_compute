@@ -17,8 +17,19 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from apps.providers.views import ProviderMachineListView
+from apps.rentals import views as rental_views
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('apps.accounts.urls')),
     path('api/providers/', include('apps.providers.urls')),
+    path('api/machines/', ProviderMachineListView.as_view(), name='api_machines_list'),
+    path('api/rentals/', include('apps.rentals.urls')),
+    
+    # Renter UI Dashboard Views
+    path('rentals/browse/', rental_views.browse_machines, name='renter_browse'),
+    path('rentals/launch/<int:machine_id>/', rental_views.launch_session, name='renter_launch'),
+    path('rentals/monitor/<int:session_id>/', rental_views.monitor_session, name='renter_monitor'),
+    path('rentals/list/', rental_views.rentals_list, name='renter_sessions_list'),
 ]

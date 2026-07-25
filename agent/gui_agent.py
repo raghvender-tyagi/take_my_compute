@@ -7,6 +7,9 @@ import threading
 import requests
 import psutil
 import customtkinter as ctk
+from datetime import datetime
+from docker_runner import DockerRunner
+import websocket
 
 # Configure logging
 logger = logging.getLogger("gui_agent")
@@ -41,6 +44,8 @@ class ProviderAgentApp(ctk.CTk):
         # State Variables
         self.is_sharing = False
         self.agent_thread = None
+        self.runner = DockerRunner()
+        self.ws = None
 
         # Load environment defaults
         self.default_url = os.getenv("BACKEND_URL", "http://localhost:8000/api/providers/heartbeat/")
@@ -180,10 +185,19 @@ class ProviderAgentApp(ctk.CTk):
             # Start background thread for agent statistics gathering
             self.agent_thread = threading.Thread(target=self.run_agent_loop, daemon=True)
             self.agent_thread.start()
+            
+            # Start background WebSocket connection thread
+            backend_url = self.url_entry.get().strip()
+            threading.Thread(target=self.connect_websocket, args=(backend_url,), daemon=True).start()
             logger.info("Sharing started. System metrics reporting active.")
         else:
             # Stop Sharing Action
             self.is_sharing = False
+            if self.ws:
+                try:
+                    self.ws.close()
+                except Exception:
+                    pass
             self.action_btn.configure(text="Start Sharing", fg_color="#1f85de", hover_color="#1867ab")
             self.status_val.configure(text="INACTIVE", text_color="#e63946")
             
@@ -199,6 +213,7 @@ class ProviderAgentApp(ctk.CTk):
             stats = {
                 "provider_id": self.id_entry.get().strip(),
                 "timestamp": time.time(),
+                "cpu_count": psutil.cpu_count(),
                 "cpu_usage_percent": psutil.cpu_percent(interval=None), # non-blocking
                 "memory_total_gb": round(psutil.virtual_memory().total / (1024 ** 3), 2),
                 "memory_used_gb": round(psutil.virtual_memory().used / (1024 ** 3), 2),
@@ -249,11 +264,165 @@ class ProviderAgentApp(ctk.CTk):
                 except Exception as e:
                     logger.error(f"Failed to connect to backend: {e}")
 
-            # Sleep for 10 seconds, but check periodically if sharing was stopped
-            for _ in range(20):
+            # Initial task check
+            self.check_for_rental_tasks(backend_url, token)
+
+            # Sleep for 10 seconds, but check for tasks every 3 seconds, and check if sharing was stopped
+            for i in range(20):
                 if not self.is_sharing:
                     break
+                if i % 6 == 0:  # approximately every 3 seconds (6 * 0.5s)
+                    self.check_for_rental_tasks(backend_url, token)
                 time.sleep(0.5)
+
+    def on_status_change(self, session_id, status, container_id=None, started_at=None, ended_at=None, error_reason=None):
+        backend_url = self.url_entry.get().strip()
+        token = self.token_entry.get().strip()
+        
+        payload = {
+            "action": "status_update",
+            "session_id": session_id,
+            "status": status
+        }
+        if container_id:
+            payload["container_id"] = container_id
+        if started_at:
+            payload["started_at"] = started_at
+        if ended_at:
+            payload["ended_at"] = ended_at
+        if error_reason:
+            payload["error_reason"] = error_reason
+
+        sent_via_ws = False
+        if self.ws and self.ws.sock and self.ws.sock.connected:
+            try:
+                self.ws.send(json.dumps(payload))
+                sent_via_ws = True
+                logger.info(f"WS: Sent status update for session {session_id} ({status})")
+            except Exception as e:
+                logger.warning(f"Failed to send status update via WS: {e}")
+
+        if not sent_via_ws:
+            try:
+                base_api_url = backend_url.split("providers/heartbeat/")[0]
+                url = f"{base_api_url}rentals/{session_id}/agent-update/"
+                
+                headers = {'Content-Type': 'application/json'}
+                if token:
+                    headers['Authorization'] = f'Bearer {token}'
+                    
+                response = requests.patch(url, data=json.dumps(payload), headers=headers, timeout=5)
+                logger.info(f"HTTP Fallback: Updated session {session_id} to status '{status}': {response.status_code}")
+            except Exception as e:
+                logger.error(f"Failed to update session status on backend: {e}")
+
+    def on_log_line(self, session_id, log_line):
+        logger.info(f"[Session {session_id} LOG]: {log_line.strip()}")
+        if self.ws and self.ws.sock and self.ws.sock.connected:
+            try:
+                self.ws.send(json.dumps({
+                    "action": "log_line",
+                    "session_id": session_id,
+                    "log_line": log_line
+                }))
+            except Exception as e:
+                logger.debug(f"Failed to stream log line over WS: {e}")
+
+    def check_for_rental_tasks(self, backend_url, token):
+        provider_id = self.id_entry.get().strip()
+        try:
+            base_api_url = backend_url.split("providers/heartbeat/")[0]
+            url = f"{base_api_url}rentals/"
+            
+            headers = {}
+            if token:
+                headers['Authorization'] = f'Bearer {token}'
+                
+            response = requests.get(url, headers=headers, timeout=4)
+            if response.status_code == 200:
+                sessions = response.json()
+                for session in sessions:
+                    if session.get("provider_machine_id") == provider_id:
+                        session_id = session["id"]
+                        status = session["status"]
+                        
+                        if status == "pending":
+                            logger.info(f"REST Polling Fallback: Found PENDING rental session {session_id}. Launching...")
+                            self.runner.run_session(
+                                session_id=session_id,
+                                image=session["docker_image"],
+                                command=session.get("command"),
+                                cpu_limit=session["cpu_limit"],
+                                memory_limit_mb=session['memory_limit_mb'],
+                                status_callback=self.on_status_change,
+                                log_callback=self.on_log_line
+                            )
+                        elif status == "stopping":
+                            logger.info(f"REST Polling Fallback: Found STOPPING request for rental session {session_id}. Terminating...")
+                            self.runner.stop_session(session_id)
+                            ended_at = datetime.utcnow().isoformat() + "Z"
+                            self.on_status_change(session_id, "stopped", ended_at=ended_at)
+        except Exception as e:
+            logger.error(f"Error checking for rental tasks in GUI: {e}")
+
+    def connect_websocket(self, backend_url):
+        ws_base = backend_url.replace("http://", "ws://").replace("https://", "wss://")
+        ws_url = ws_base.split("api/providers/heartbeat/")[0] + "ws/agent/"
+        provider_id = self.id_entry.get().strip()
+
+        logger.info(f"Connecting to backend WebSocket at {ws_url}...")
+
+        def on_message(ws_conn, message):
+            try:
+                data = json.loads(message)
+                action = data.get("action")
+                if action == "run_task":
+                    session_id = data["session_id"]
+                    logger.info(f"WS: Assigned task for session {session_id}")
+                    self.runner.run_session(
+                        session_id=session_id,
+                        image=data["docker_image"],
+                        command=data.get("command"),
+                        cpu_limit=data["cpu_limit"],
+                        memory_limit_mb=data["memory_limit_mb"],
+                        status_callback=self.on_status_change,
+                        log_callback=self.on_log_line
+                    )
+                elif action == "stop_task":
+                    session_id = data["session_id"]
+                    logger.info(f"WS: Stop command received for session {session_id}")
+                    self.runner.stop_session(session_id)
+                    ended_at = datetime.utcnow().isoformat() + "Z"
+                    self.on_status_change(session_id, "stopped", ended_at=ended_at)
+            except Exception as e:
+                logger.error(f"WS: Error processing command: {e}")
+
+        def on_error(ws_conn, error):
+            logger.error(f"WebSocket error: {error}")
+
+        def on_close(ws_conn, close_status_code, close_msg):
+            logger.info("WebSocket connection closed.")
+            if self.is_sharing:
+                logger.info("Reconnecting in 5 seconds...")
+                time.sleep(5)
+                if self.is_sharing:
+                    threading.Thread(target=self.connect_websocket, args=(backend_url,), daemon=True).start()
+
+        def on_open(ws_conn):
+            logger.info("WebSocket connection established. Registering as provider...")
+            ws_conn.send(json.dumps({
+                "action": "register",
+                "provider_id": provider_id
+            }))
+
+        self.ws = websocket.WebSocketApp(
+            ws_url,
+            on_open=on_open,
+            on_message=on_message,
+            on_error=on_error,
+            on_close=on_close
+        )
+        self.ws.run_forever()
 
 if __name__ == "__main__":
     app = ProviderAgentApp()
