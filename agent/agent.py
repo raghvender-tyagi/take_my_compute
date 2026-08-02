@@ -62,7 +62,6 @@ def send_heartbeat(stats):
 
 def on_status_change(session_id, status, container_id=None, started_at=None, ended_at=None, error_reason=None):
     """Callback when a Docker container status changes, reporting to the backend."""
-    global ws
     payload = {
         "action": "status_update",
         "session_id": session_id,
@@ -103,7 +102,6 @@ def on_status_change(session_id, status, container_id=None, started_at=None, end
 
 def on_log_line(session_id, log_line):
     """Callback when a new line of log is streamed from the docker sandbox."""
-    global ws
     logger.info(f"[Session {session_id} LOG]: {log_line.strip()}")
     if ws and ws.sock and ws.sock.connected:
         try:
