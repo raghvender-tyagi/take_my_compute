@@ -1,0 +1,28 @@
+{% extends 'rentals/base.html' %}
+
+{% block title %}Login - TakeMyCompute{% endblock %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 5rem auto;" class="glass-card">
+    <h2 style="text-align: center; margin-bottom: 2rem;">Welcome Back</h2>
+    
+    {% if form.errors %}
+        <p style="color: #ef4444; margin-bottom: 1rem; text-align: center; font-size: 0.9rem;">Your username and password didn't match. Please try again.</p>
+    {% endif %}
+
+    <form method="post" action="{% url 'login' %}">
+        {% csrf_token %}
+        <div style="margin-bottom: 1.5rem;">
+            <label for="id_username" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Username</label>
+            <input type="text" name="username" autofocus autocapitalize="none" autocomplete="username" maxlength="150" required id="id_username" class="form-input" style="width: 100%; background: rgba(13, 15, 20, 0.8); border: 1px solid var(--card-border); border-radius: 8px; padding: 0.8rem; color: white;">
+        </div>
+        <div style="margin-bottom: 2rem;">
+            <label for="id_password" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Password</label>
+            <input type="password" name="password" autocomplete="current-password" required id="id_password" class="form-input" style="width: 100%; background: rgba(13, 15, 20, 0.8); border: 1px solid var(--card-border); border-radius: 8px; padding: 0.8rem; color: white;">
+        </div>
+        
+        <input type="hidden" name="next" value="{{ next }}">
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 1rem;">Log In to Dashboard</button>
+    </form>
+</div>
+{% endblock %}

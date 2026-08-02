@@ -30,6 +30,7 @@ services:
       - DEBUG=1
       - SECRET_KEY=django-insecure-dev-key-12345
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - REDIS_URL=redis://redis:6379/1
     depends_on:
       - db
       - redis

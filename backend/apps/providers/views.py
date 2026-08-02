@@ -7,9 +7,9 @@ from .serializers import ProviderHeartbeatSerializer, ProviderMachineSerializer
 class ProviderHeartbeatView(views.APIView):
     """
     Endpoint for provider monitoring agents to report status/resources.
-    If the agent sends a JWT token, the machine will be associated with the authenticated user.
+    Requires a valid JWT token to associate the machine with a registered user.
     """
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, *args, **kwargs):
         serializer = ProviderHeartbeatSerializer(data=request.data)

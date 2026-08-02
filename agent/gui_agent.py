@@ -37,7 +37,7 @@ class ProviderAgentApp(ctk.CTk):
 
         # Window Settings
         self.title("TakeMyCompute - Provider Control Panel")
-        self.geometry("850x550")
+        self.geometry("850x650")
         ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("blue")
 
@@ -101,6 +101,24 @@ class ProviderAgentApp(ctk.CTk):
         self.token_entry.insert(0, self.default_token)
         self.token_entry.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="ew")
 
+        # Input: CPU Limit (Cores)
+        import psutil
+        physical_cpu = psutil.cpu_count(logical=False) or 1
+        total_ram = round(psutil.virtual_memory().total / (1024 ** 3), 1)
+
+        self.cpu_limit_lbl = ctk.CTkLabel(self.left_frame, text=f"Max CPU Cores (Host Max: {physical_cpu})", font=ctk.CTkFont(size=12))
+        self.cpu_limit_lbl.grid(row=8, column=0, padx=20, pady=(10, 2), sticky="w")
+        self.cpu_limit_entry = ctk.CTkEntry(self.left_frame, placeholder_text=str(physical_cpu))
+        self.cpu_limit_entry.insert(0, str(physical_cpu))
+        self.cpu_limit_entry.grid(row=9, column=0, padx=20, pady=(0, 10), sticky="ew")
+
+        # Input: RAM Limit (GB)
+        self.ram_limit_lbl = ctk.CTkLabel(self.left_frame, text=f"Max RAM GB (Host Max: {total_ram})", font=ctk.CTkFont(size=12))
+        self.ram_limit_lbl.grid(row=10, column=0, padx=20, pady=(10, 2), sticky="w")
+        self.ram_limit_entry = ctk.CTkEntry(self.left_frame, placeholder_text=str(total_ram))
+        self.ram_limit_entry.insert(0, str(total_ram))
+        self.ram_limit_entry.grid(row=11, column=0, padx=20, pady=(0, 20), sticky="ew")
+
         # Toggle Button
         self.action_btn = ctk.CTkButton(
             self.left_frame, text="Start Sharing", 
@@ -108,11 +126,11 @@ class ProviderAgentApp(ctk.CTk):
             font=ctk.CTkFont(size=14, weight="bold"),
             command=self.toggle_sharing
         )
-        self.action_btn.grid(row=8, column=0, padx=20, pady=10, sticky="ew")
+        self.action_btn.grid(row=12, column=0, padx=20, pady=10, sticky="ew")
 
         # Status Indicator
         self.status_frame = ctk.CTkFrame(self.left_frame, fg_color="transparent")
-        self.status_frame.grid(row=9, column=0, padx=20, pady=10, sticky="ew")
+        self.status_frame.grid(row=13, column=0, padx=20, pady=10, sticky="ew")
         
         self.status_lbl = ctk.CTkLabel(self.status_frame, text="Status: ", font=ctk.CTkFont(size=13))
         self.status_lbl.pack(side="left")
@@ -210,12 +228,23 @@ class ProviderAgentApp(ctk.CTk):
     def get_system_stats(self):
         """Gathers system resources stats."""
         try:
+            # Read user-defined limits
+            try:
+                allowed_cpu = int(self.cpu_limit_entry.get().strip())
+            except ValueError:
+                allowed_cpu = psutil.cpu_count()
+                
+            try:
+                allowed_ram_gb = float(self.ram_limit_entry.get().strip())
+            except ValueError:
+                allowed_ram_gb = round(psutil.virtual_memory().total / (1024 ** 3), 2)
+
             stats = {
                 "provider_id": self.id_entry.get().strip(),
                 "timestamp": time.time(),
-                "cpu_count": psutil.cpu_count(),
+                "cpu_count": allowed_cpu,
                 "cpu_usage_percent": psutil.cpu_percent(interval=None), # non-blocking
-                "memory_total_gb": round(psutil.virtual_memory().total / (1024 ** 3), 2),
+                "memory_total_gb": allowed_ram_gb,
                 "memory_used_gb": round(psutil.virtual_memory().used / (1024 ** 3), 2),
                 "memory_usage_percent": psutil.virtual_memory().percent,
                 "disk_total_gb": round(psutil.disk_usage('/').total / (1024 ** 3), 2),
