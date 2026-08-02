@@ -29,6 +29,12 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*'] # Using wildcard for ease of testing on Render
 
+# Allow CSRF requests from Render domain
+CSRF_TRUSTED_ORIGINS = [
+    'https://takemycompute-backend.onrender.com',
+    'https://*.onrender.com',
+]
+
 
 # Application definition
 
