@@ -27,12 +27,12 @@ services:
       - key: DEBUG
         value: "0"
 
+  - type: redis
+    name: takemycompute-redis
+    plan: free
+
 databases:
   - name: takemycompute-db
     plan: free
     databaseName: compute_cloud
     user: postgres
-
-redis:
-  - name: takemycompute-redis
-    plan: free
