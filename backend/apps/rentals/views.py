@@ -122,6 +122,10 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from apps.providers.models import ProviderMachine
 
+def home_view(request):
+    """Landing page for the web application."""
+    return render(request, 'rentals/home.html')
+
 @login_required
 def browse_machines(request):
     min_cpu = request.GET.get('min_cpu')

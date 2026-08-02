@@ -21,6 +21,7 @@ from apps.providers.views import ProviderMachineListView
 from apps.rentals import views as rental_views
 
 urlpatterns = [
+    path('', rental_views.home_view, name='home'),
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')), # Added for dashboard login
     path('api/auth/', include('apps.accounts.urls')),

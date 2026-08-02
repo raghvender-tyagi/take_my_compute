@@ -1,0 +1,117 @@
+{% extends 'rentals/base.html' %}
+
+{% block title %}TakeMyCompute - Decentralized Compute Platform{% endblock %}
+
+{% block style %}
+    .hero {
+        text-align: center;
+        padding: 5rem 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: 800;
+        letter-spacing: -1px;
+        margin-bottom: 1.5rem;
+        background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        max-width: 800px;
+        line-height: 1.2;
+    }
+
+    .hero-title span {
+        background: linear-gradient(135deg, #38bdf8 0%, #1f85de 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+        font-size: 1.2rem;
+        color: var(--text-muted);
+        max-width: 600px;
+        margin-bottom: 3rem;
+        line-height: 1.6;
+    }
+
+    .hero-actions {
+        display: flex;
+        gap: 1.5rem;
+    }
+
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+
+    .feature-card {
+        text-align: left;
+        padding: 2.5rem 2rem;
+    }
+
+    .feature-icon {
+        width: 50px;
+        height: 50px;
+        background: rgba(56, 189, 248, 0.1);
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        color: #38bdf8;
+        font-size: 1.5rem;
+    }
+
+    .feature-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .feature-desc {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+{% endblock %}
+
+{% block content %}
+    <div class="hero">
+        <h1 class="hero-title">Rent & Provide <span>Decentralized Compute</span> at Scale</h1>
+        <p class="hero-subtitle">The first peer-to-peer cloud computing platform. Rent idle GPUs and CPUs from providers worldwide, or become a provider and earn from your idle hardware.</p>
+        
+        <div class="hero-actions">
+            <a href="{% url 'renter_browse' %}" class="btn btn-primary" style="padding: 1rem 2rem; font-size: 1.1rem;">
+                Browse Compute
+            </a>
+            <a href="{% url 'renter_sessions_list' %}" class="btn btn-outline" style="padding: 1rem 2rem; font-size: 1.1rem;">
+                My Rentals
+            </a>
+        </div>
+    </div>
+
+    <div class="feature-grid">
+        <div class="glass-card feature-card">
+            <div class="feature-icon">🚀</div>
+            <h3 class="feature-title">Instant Provisioning</h3>
+            <p class="feature-desc">Spin up isolated Docker containers on remote hardware in seconds. Get instant access to CPU and RAM with zero setup time.</p>
+        </div>
+        <div class="glass-card feature-card">
+            <div class="feature-icon">🔒</div>
+            <h3 class="feature-title">Secure & Sandboxed</h3>
+            <p class="feature-desc">All workloads run in tightly constrained, isolated environments using cgroups and namespaces for maximum security.</p>
+        </div>
+        <div class="glass-card feature-card">
+            <div class="feature-icon">⚡</div>
+            <h3 class="feature-title">Real-Time Streaming</h3>
+            <p class="feature-desc">Monitor your remote containers effortlessly with live WebSocket streaming for stdout/stderr logs and hardware utilization.</p>
+        </div>
+    </div>
+{% endblock %}
