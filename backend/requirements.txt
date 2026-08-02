@@ -9,3 +9,4 @@ psycopg2-binary>=2.9.9
 daphne>=4.0.0
 channels>=4.0.0
 channels-redis>=4.1.0
+dj-database-url>=2.1.0
