@@ -30,9 +30,9 @@ services:
   - type: redis
     name: takemycompute-redis
     plan: free
+    ipAllowList: []
 
 databases:
   - name: takemycompute-db
     plan: free
     databaseName: compute_cloud
-    user: postgres
