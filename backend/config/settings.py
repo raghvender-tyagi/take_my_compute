@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlparse
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -157,11 +158,24 @@ SIMPLE_JWT = {
 }
 
 # Channels Channel Layers
+REDIS_URL = os.getenv('REDIS_URL') or os.getenv('CELERY_BROKER_URL') or 'redis://redis:6379/0'
+redis_parsed = urlparse(REDIS_URL)
+redis_host = redis_parsed.hostname or 'redis'
+redis_port = redis_parsed.port or 6379
+redis_password = redis_parsed.password
+
+channel_layer_config = {
+    'hosts': [(redis_host, redis_port)],
+}
+
+if redis_password:
+    channel_layer_config['password'] = redis_password
+if redis_parsed.scheme == 'rediss':
+    channel_layer_config['ssl'] = True
+
 CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.pubsub.RedisPubSubChannelLayer",
-        "CONFIG": {
-            "hosts": [("redis", 6379)],
-        },
+    'default': {
+        'BACKEND': 'channels_redis.pubsub.RedisPubSubChannelLayer',
+        'CONFIG': channel_layer_config,
     },
 }
