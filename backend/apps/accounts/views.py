@@ -5,8 +5,23 @@ from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import RegisterSerializer, UserSerializer
+from django.shortcuts import render, redirect
+from django.contrib.auth import login
+from .forms import RegisterForm
 
 User = get_user_model()
+
+def register_view(request):
+    """HTML registration page using custom RegisterForm."""
+    if request.method == "POST":
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            return redirect('renter_browse')
+    else:
+        form = RegisterForm()
+    return render(request, "accounts/register.html", {"form": form})
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
