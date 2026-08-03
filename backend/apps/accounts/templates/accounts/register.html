@@ -1,0 +1,55 @@
+{% extends 'rentals/base.html' %}
+
+{% block title %}Register - TakeMyCompute{% endblock %}
+
+{% block content %}
+<div style="max-width: 520px; margin: 0 auto; padding: 2rem 0;">
+    <div class="glass-card">
+        <h2 style="margin-bottom: 0.75rem;">Create your account</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Join TakeMyCompute as a renter, provider, or both.</p>
+
+        <form method="post">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+
+            <div style="display: grid; gap: 1rem;">
+                <div>
+                    <label for="id_username" style="display:block; margin-bottom:0.35rem;">Username</label>
+                    {{ form.username }}
+                    {{ form.username.errors }}
+                </div>
+
+                <div>
+                    <label for="id_email" style="display:block; margin-bottom:0.35rem;">Email</label>
+                    {{ form.email }}
+                    {{ form.email.errors }}
+                </div>
+
+                <div>
+                    <label for="id_role" style="display:block; margin-bottom:0.35rem;">Role</label>
+                    {{ form.role }}
+                    {{ form.role.errors }}
+                </div>
+
+                <div>
+                    <label for="id_password1" style="display:block; margin-bottom:0.35rem;">Password</label>
+                    {{ form.password1 }}
+                    {{ form.password1.errors }}
+                </div>
+
+                <div>
+                    <label for="id_password2" style="display:block; margin-bottom:0.35rem;">Confirm password</label>
+                    {{ form.password2 }}
+                    {{ form.password2.errors }}
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="margin-top: 1.25rem; width: 100%;">Register</button>
+        </form>
+
+        <p style="margin-top: 1rem; color: var(--text-muted);">
+            Already have an account? <a href="/accounts/login/" style="color: var(--text-accent);">Login here</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

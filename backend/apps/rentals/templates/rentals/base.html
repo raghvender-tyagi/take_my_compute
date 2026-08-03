@@ -225,6 +225,10 @@
         <ul class="nav-links">
             <li><a href="{% url 'renter_browse' %}" class="{% block active_browse %}{% endblock %}">Browse Compute</a></li>
             <li><a href="{% url 'renter_sessions_list' %}" class="{% block active_sessions %}{% endblock %}">My Rentals</a></li>
+            {% if not user.is_authenticated %}
+            <li><a href="{% url 'register' %}">Register</a></li>
+            <li><a href="/accounts/login/">Login</a></li>
+            {% endif %}
         </ul>
         {% if user.is_authenticated %}
         <div class="user-badge">
